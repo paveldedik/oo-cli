@@ -1,7 +1,7 @@
 [project]
 # "oo", "oo-cli" and "openobserve" are all taken on PyPI.
 name = "openobserve-cli"
-version = "0.1.0"
+version = "0.2.0"
 description = "CLI for the OpenObserve HTTP API"
 readme = "README.md"
 keywords = ["openobserve", "observability", "logs", "metrics", "traces", "cli"]
