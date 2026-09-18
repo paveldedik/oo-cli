@@ -54,8 +54,21 @@ data:
                 # Whole name=value pairs, so the CLI needs to know none of the names.
                 params.update({"c%d" % index: pair for index, pair in enumerate(cookies)})
             else:
-                params["error"] = "the request carried no gateway session cookie"
+                # Names only, never values: enough to see whether the gateway forwards
+                # its cookie at all and under what name, without handing one out.
+                carried = ", ".join(self.cookie_names()) or "no cookies at all"
+                params["error"] = "no cookie matching %s; the request carried %s" % (
+                    COOKIE.pattern,
+                    carried,
+                )
             return self.redirect("http://127.0.0.1:%s/callback?%s" % (port, urlencode(params)))
+
+        def cookie_names(self):
+            return [
+                part.strip().partition("=")[0]
+                for part in self.headers.get("Cookie", "").split(";")
+                if part.strip()
+            ]
 
         def gateway_cookies(self):
             pairs = []
