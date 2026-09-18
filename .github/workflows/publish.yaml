@@ -11,7 +11,8 @@ jobs:
     name: Release to GitHub and PyPI
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: write   # the GitHub release
+      id-token: write   # PyPI trusted publishing, so there is no token to store
 
     steps:
       - uses: actions/checkout@v6
@@ -33,5 +34,3 @@ jobs:
 
       - name: Publish Distribution Package to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          password: ${{ secrets.PYPI_API_TOKEN }}
