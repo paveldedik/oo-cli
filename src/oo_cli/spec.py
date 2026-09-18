@@ -45,7 +45,9 @@ class Spec:
         """Map command segments onto a concrete API path, preferring v2.
 
         A few endpoints (organizations, clusters) sit outside an organization, so an
-        org-less path is the last candidate.
+        org-less path is the last candidate. The candidate matching the most literal
+        segments wins, so `alerts/destinations` is v1's destination endpoint rather
+        than v2's `alerts/{alert_id}` with "destinations" as the id.
         """
         tail = "/".join(segments)
         v2, v1, global_ = f"/api/v2/{org}/{tail}", f"/api/{org}/{tail}", f"/api/{tail}"
@@ -53,14 +55,18 @@ class Spec:
         if not self.templates:
             return Resolution(v2 if segments and segments[0] in V2_RESOURCES else v1, None)
 
+        best = Resolution(v1, None)
+        best_score = -1
         for candidate in (v2, v1, global_):
-            template = self._match(candidate, method)
-            if template:
-                return Resolution(candidate, template)
-        return Resolution(v1, None)
+            template, score = self._match(candidate, method, len(segments))
+            if template is not None and score > best_score:
+                best, best_score = Resolution(candidate, template), score
+        return best
 
-    def _match(self, path: str, method: str) -> str | None:
+    def _match(self, path: str, method: str, tail_length: int) -> tuple[str | None, int]:
+        """The best template for this path, and how many of its tail segments are literal."""
         parts = path.strip("/").split("/")
+        best: tuple[str | None, int] = (None, -1)
         for template, methods in self.templates.items():
             if method.lower() not in methods:
                 continue
@@ -71,8 +77,10 @@ class Spec:
                 t.startswith("{") and t.endswith("}") or t == p
                 for t, p in zip(template_parts, parts, strict=True)
             ):
-                return template
-        return None
+                score = sum(1 for t in template_parts[-tail_length:] if not t.startswith("{"))
+                if score > best[1]:
+                    best = (template, score)
+        return best
 
     def paths(self, needle: str | None = None) -> list[tuple[str, list[str]]]:
         items = sorted(self.templates.items())

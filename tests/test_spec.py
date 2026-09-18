@@ -51,3 +51,11 @@ def test_an_endpoint_outside_an_organization_drops_the_org() -> None:
     resolution = Spec(TEMPLATES).resolve("default", ["organizations"], "get")
     assert resolution.path == "/api/organizations"
     assert resolution.matched
+
+
+def test_a_literal_v1_path_beats_a_v2_path_parameter() -> None:
+    # "destinations" is a v1 endpoint, not an alert id, even though v2 would match it.
+    templates = {**TEMPLATES, "/api/{org_id}/alerts/destinations": ["get", "post"]}
+    resolution = Spec(templates).resolve("default", ["alerts", "destinations"], "get")
+    assert resolution.path == "/api/default/alerts/destinations"
+    assert resolution.template == "/api/{org_id}/alerts/destinations"
