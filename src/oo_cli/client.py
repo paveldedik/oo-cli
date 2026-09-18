@@ -6,6 +6,7 @@ from typing import Any
 
 import httpx
 
+from oo_cli import session
 from oo_cli.config import Config
 
 
@@ -25,6 +26,9 @@ class Client:
         headers = {"Accept": "application/json"}
         if config.authorization:
             headers["Authorization"] = config.authorization
+        cookies = session.load(config.endpoint)
+        if cookies:
+            headers["Cookie"] = session.header(cookies)
         self._http = httpx.Client(
             base_url=config.endpoint,
             headers=headers,
@@ -55,7 +59,7 @@ class Client:
         except httpx.HTTPError as exc:
             raise OOError(f"request to {self.config.endpoint}{path} failed: {exc}") from exc
 
-        _reject_oidc_gate(response)
+        _reject_gateway(response)
         if response.status_code >= 400:
             raise HTTPError(response)
         return response
@@ -64,23 +68,22 @@ class Client:
         return self.request(method, path, **kwargs).json()
 
 
-_UNREACHABLE_HINT = (
-    "Start the port-forward first:\n"
-    "  kubectl -n openobserve port-forward svc/openobserve 5080:5080"
-)
+_UNREACHABLE_HINT = "Set OO_ENDPOINT to a reachable OpenObserve, or start your port-forward."
 
-_OIDC_HINT = (
-    "The endpoint sits behind the Entra ID OIDC gate on the ALB, which only accepts its own\n"
-    "session cookie — no token gets past it. Point the CLI at a port-forward instead:\n"
-    "  kubectl -n openobserve port-forward svc/openobserve 5080:5080\n"
-    "  export OO_ENDPOINT=http://localhost:5080"
+_GATEWAY_HINT = (
+    "Something in front of OpenObserve is authenticating users itself and only takes its\n"
+    "own session cookie — no API token gets past it. Pick the cookie up from the browser:\n"
+    "  oo auth login"
 )
 
 
-def _reject_oidc_gate(response: httpx.Response) -> None:
-    """Turn the ALB's redirect to Entra into an explanation instead of a parse error."""
+def _reject_gateway(response: httpx.Response) -> None:
+    """Explain a redirect to an identity provider instead of leaving a parse error behind."""
     location = response.headers.get("location", "")
-    if response.is_redirect and "login.microsoftonline.com" in location:
-        raise OOError(f"{response.request.url} is gated by Entra ID\n{_OIDC_HINT}")
-    if "text/html" in response.headers.get("content-type", "") and "microsoft" in response.text.lower():
-        raise OOError(f"{response.request.url} returned a Microsoft login page\n{_OIDC_HINT}")
+    if not response.is_redirect or not location.startswith(("http://", "https://")):
+        return
+    if httpx.URL(location).host == response.request.url.host:
+        return
+    raise OOError(
+        f"{response.request.url} redirected to {httpx.URL(location).host}\n{_GATEWAY_HINT}"
+    )

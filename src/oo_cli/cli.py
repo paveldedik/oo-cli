@@ -13,29 +13,34 @@ import sys
 
 import httpx
 
-from oo_cli import __version__, spec as spec_module
+from oo_cli import __version__, auth, session, spec as spec_module
 from oo_cli.client import Client, HTTPError, OOError
 from oo_cli.config import Config, ConfigError
 from oo_cli.timeutil import TimeError, to_micros
+
+LOOPBACK = ("localhost", "127.0.0.1", "::1")
 
 VERBS = ("get", "post", "put", "patch", "delete")
 
 EPILOG = """\
 examples:
+  oo auth login                           sign in through the browser, when gated
   oo get dashboards
   oo get alerts --folder default          -> /api/v2/{org}/alerts?folder=default
   oo get streams/sp_metrics
   oo post alerts -f alert.json
   oo delete dashboards/0194f0e1 --folder default
-  oo search --sql "select * from cloudwatch_logs limit 10" --from -30m
+  oo search --sql "select * from default limit 10" --from -30m
   oo api GET /api/{org}/prometheus/api/v1/query --query "up"
 
 environment:
-  OO_ENDPOINT  default http://localhost:5080
-  OO_ORG       default "default"
-  OO_TOKEN     base64 of "email:token", sent as HTTP basic auth
-  OO_USER      alternative to OO_TOKEN, together with OO_PASSWORD
-  OO_TIMEOUT   seconds, default 60
+  OO_ENDPOINT    base URL, default http://localhost:5080
+  OO_ORG         organization, default "default"
+  OO_TOKEN       base64 of "email:token", sent as HTTP basic auth
+  OO_USER        alternative to OO_TOKEN, together with OO_PASSWORD
+  OO_TIMEOUT     request timeout in seconds, default 60
+  OO_LOGIN_PATH  where the login helper is mounted, default /cli-login
+  OO_HOME        where the session file lives, default ~/.oo
 
 Any other --name value or --name=value is passed through as a query parameter.
 """
@@ -51,7 +56,7 @@ def main(argv: list[str] | None = None) -> int:
     except UsageError as exc:
         print(f"oo: {exc}", file=sys.stderr)
         return 2
-    except (ConfigError, TimeError) as exc:
+    except (ConfigError, TimeError, auth.LoginError) as exc:
         print(f"oo: {exc}", file=sys.stderr)
         return 2
     except HTTPError as exc:
@@ -74,6 +79,8 @@ def run(argv: list[str]) -> int:
 
     config = Config.from_env(endpoint=args.endpoint, org=args.org, timeout=args.timeout)
     with Client(config) as client:
+        if args.command == "auth":
+            return _run_auth(client, args, extras)
         if args.command == "spec":
             return _run_spec(client, args, extras)
         if args.command == "search":
@@ -140,6 +147,15 @@ def _parser() -> argparse.ArgumentParser:
     p.add_argument("--offset", type=int, default=0, help="row offset, default 0")
     p.add_argument("--type", default="logs", help="stream type: logs, metrics or traces")
 
+    p = sub.add_parser(
+        "auth", help="sign in to an authenticating gateway in front of the endpoint", allow_abbrev=False
+    )
+    p.add_argument("action", choices=("login", "status", "logout"))
+    p.add_argument(
+        "--cookie",
+        help="skip the browser and use a Cookie header copied from devtools",
+    )
+
     p = sub.add_parser("spec", help="inspect the instance's OpenAPI document", allow_abbrev=False)
     p.add_argument("action", choices=("paths", "refresh"), help="list endpoints or refetch the spec")
     p.add_argument("needle", nargs="?", help="substring filter for paths")
@@ -194,6 +210,55 @@ def _run_search(client: Client, args: argparse.Namespace, extras: list[str]) -> 
     )
     _emit(response, args.raw)
     return 0
+
+
+def _run_auth(client: Client, args: argparse.Namespace, extras: list[str]) -> int:
+    if extras:
+        raise UsageError(f"unexpected argument {extras[0]}")
+    endpoint = client.config.endpoint
+
+    if args.action == "logout":
+        print(f"Signed out of {endpoint}" if session.clear(endpoint) else f"No session for {endpoint}")
+        return 0
+
+    if args.action == "status":
+        age = session.age(endpoint)
+        if age is None:
+            print(f"No session for {endpoint}")
+            return 1
+        print(f"Session for {endpoint} stored {_hours(age)} ago")
+        return 0 if _gate_open(client.config) else 1
+
+    if httpx.URL(endpoint).host in LOOPBACK:
+        raise UsageError(
+            f"nothing authenticates in front of {endpoint}, so there is nothing to sign in to; "
+            "point OO_ENDPOINT or --endpoint at the gated host"
+        )
+    cookies = (
+        auth.parse_cookies(args.cookie)
+        if args.cookie
+        else auth.login(endpoint, client.config.login_path)
+    )
+    session.save(endpoint, cookies)
+    if not _gate_open(client.config):
+        raise OOError(f"the gateway did not accept the cookie, stored in {session.path()} anyway")
+    print(f"Signed in to {endpoint}.")
+    return 0
+
+
+def _gate_open(config: Config) -> bool:
+    """Ask for the health endpoint: past the gateway, but before OpenObserve's own auth."""
+    with Client(config) as client:
+        try:
+            client.request("GET", "/healthz")
+        except OOError:
+            return False
+    return True
+
+
+def _hours(seconds: float) -> str:
+    hours = seconds / 3600
+    return f"{hours:.0f}h" if hours >= 1 else f"{seconds / 60:.0f}m"
 
 
 def _run_spec(client: Client, args: argparse.Namespace, extras: list[str]) -> int:

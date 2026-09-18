@@ -9,6 +9,8 @@ from dataclasses import dataclass
 DEFAULT_ENDPOINT = "http://localhost:5080"
 DEFAULT_ORG = "default"
 DEFAULT_TIMEOUT = 60.0
+#: Where the login helper is mounted behind the gateway, see `oo auth login`.
+DEFAULT_LOGIN_PATH = "/cli-login"
 
 
 class ConfigError(Exception):
@@ -21,6 +23,7 @@ class Config:
     org: str
     authorization: str | None
     timeout: float
+    login_path: str
 
     @classmethod
     def from_env(
@@ -36,14 +39,15 @@ class Config:
             org=org or env.get("OO_ORG") or DEFAULT_ORG,
             authorization=_authorization(env),
             timeout=timeout or float(env.get("OO_TIMEOUT") or DEFAULT_TIMEOUT),
+            login_path=env.get("OO_LOGIN_PATH") or DEFAULT_LOGIN_PATH,
         )
 
 
 def _authorization(env: dict[str, str]) -> str | None:
     """Build the Authorization header value.
 
-    OO_TOKEN is the credential OpenObserve's own UI hands out (base64 of
-    "email:token"); it is sent as-is when it already names its scheme.
+    OO_TOKEN is the credential OpenObserve hands out for a service account (base64
+    of "email:token"); it is sent as-is when it already names its scheme.
     OO_USER + OO_PASSWORD is the same thing spelled out.
     """
     token = env.get("OO_TOKEN")
