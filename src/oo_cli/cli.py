@@ -10,11 +10,13 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from pathlib import Path
 from typing import TextIO
 
 import httpx
 
 from oo_cli import __version__
+from oo_cli import skill as skill_module
 from oo_cli import spec as spec_module
 from oo_cli.client import Client, HTTPError, OOError
 from oo_cli.config import Config, ConfigError
@@ -74,6 +76,9 @@ def run(argv: list[str]) -> int:
     if not args.command:
         parser.print_help()
         return 2
+
+    if args.command == "skill":
+        return _run_skill(args, extras)
 
     config = Config.from_env(endpoint=args.endpoint, org=args.org, timeout=args.timeout)
     with Client(config) as client:
@@ -145,6 +150,21 @@ def _parser() -> argparse.ArgumentParser:
     p.add_argument("--offset", type=int, default=0, help="row offset, default 0")
     p.add_argument("--type", default="logs", help="stream type: logs, metrics or traces")
 
+    p = sub.add_parser(
+        "skill", help="install the agent skill bundled with the CLI", allow_abbrev=False
+    )
+    p.add_argument(
+        "action",
+        choices=("install", "update", "path"),
+        help="copy the skill, refresh an installed copy, or print where the bundled one lives",
+    )
+    p.add_argument(
+        "--dir",
+        dest="directory",
+        help=f"directory holding your skills, default {skill_module.DEFAULT_DIR}",
+    )
+    p.add_argument("--force", action="store_true", help="replace an existing installation")
+
     p = sub.add_parser("spec", help="inspect the instance's OpenAPI document", allow_abbrev=False)
     p.add_argument(
         "action", choices=("paths", "refresh"), help="list endpoints or refetch the spec"
@@ -200,6 +220,22 @@ def _run_search(client: Client, args: argparse.Namespace, extras: list[str]) -> 
         "POST", f"/api/{client.config.org}/_search", params=params, body=json.dumps(body).encode()
     )
     _emit(response, args.raw)
+    return 0
+
+
+def _run_skill(args: argparse.Namespace, extras: list[str]) -> int:
+    if extras:
+        raise UsageError(f"unexpected argument {extras[0]}")
+    directory = Path(args.directory).expanduser() if args.directory else None
+    if args.action == "path":
+        print(skill_module.source())
+        return 0
+    if args.action == "install":
+        target = skill_module.install(directory, force=args.force)
+        print(f"installed the {skill_module.NAME} skill in {target}")
+    else:
+        target = skill_module.update(directory)
+        print(f"updated the {skill_module.NAME} skill in {target}")
     return 0
 
 

@@ -42,6 +42,14 @@ dev = ["pytest>=8", "mypy>=1.18", "ruff>=0.14"]
 [tool.hatch.build.targets.wheel]
 packages = ["src/oo_cli"]
 
+# The agent skill lives at the top of the repository, where agents browsing GitHub find
+# it, and rides along in the package so `oo skill install` needs no checkout.
+[tool.hatch.build.targets.wheel.force-include]
+"skills/openobserve" = "oo_cli/_skill"
+
+[tool.hatch.build.targets.sdist]
+include = ["src", "skills", "tests", "README.md", "LICENSE", "pyproject.toml"]
+
 [tool.ruff]
 line-length = 100
 target-version = "py311"

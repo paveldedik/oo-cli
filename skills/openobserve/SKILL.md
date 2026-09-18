@@ -19,7 +19,8 @@ v2; there is no version flag. Anything the rule does not reach is still one comm
 with `oo api <METHOD> <path>`.
 
 Install with `uv tool install openobserve-cli`, or run it without installing:
-`uvx openobserve-cli get streams`.
+`uvx openobserve-cli get streams`. This skill came from that package - `oo skill update`
+refreshes it after the CLI is upgraded.
 
 ## Start here
 

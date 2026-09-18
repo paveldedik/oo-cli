@@ -1,8 +1,10 @@
 from datetime import UTC
+from pathlib import Path
 
 import pytest
+from pytest import MonkeyPatch
 
-from oo_cli.cli import UsageError, _params
+from oo_cli.cli import UsageError, _params, main
 from oo_cli.config import Config, ConfigError
 from oo_cli.timeutil import TimeError, to_micros
 
@@ -89,3 +91,11 @@ def test_a_negative_offset_is_not_read_as_an_option() -> None:
         "--to",
         "now",
     ]
+
+
+def test_the_skill_command_needs_no_endpoint(tmp_path: Path, monkeypatch: MonkeyPatch) -> None:
+    # It must work with nothing configured, before anyone has a token.
+    monkeypatch.delenv("OO_TOKEN", raising=False)
+    assert main(["skill", "install", "--dir", str(tmp_path)]) == 0
+    assert (tmp_path / "openobserve" / "SKILL.md").is_file()
+    assert main(["skill", "install", "--dir", str(tmp_path)]) == 1

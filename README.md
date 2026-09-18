@@ -90,18 +90,21 @@ Without a reachable spec the CLI falls back to v1, except for `alerts`, `folders
 
 ## Skill for agents
 
-`skills/openobserve` is a skill for coding agents: how the commands map onto the API, what
-the bodies look like, and a reference for every endpoint, written from an instance's own
-OpenAPI document. Drop it next to your other skills:
+The CLI carries a skill for coding agents: how the commands map onto the API, what the
+bodies look like, and a reference for every endpoint, written from an instance's own
+OpenAPI document. It installs itself.
 
 ```bash
-mkdir -p ~/.claude/skills
-curl -sL https://github.com/paveldedik/oo-cli/archive/main.tar.gz \
-  | tar -xz --strip-components=2 -C ~/.claude/skills oo-cli-main/skills/openobserve
+oo skill install            # -> ~/.claude/skills/openobserve
+oo skill update             # after upgrading the CLI
 ```
 
-Or point any agent that reads Markdown at `skills/openobserve/SKILL.md`; the files under
-`references/` are plain documentation and stand on their own.
+`--dir` puts it somewhere else (`oo skill install --dir .claude/skills` for one project),
+`--force` overwrites an existing copy, and `oo skill path` prints the bundled original.
+Without installing anything: `uvx openobserve-cli skill install`.
+
+The files are also plain Markdown in `skills/openobserve`, so any agent that reads
+Markdown can be pointed straight at `SKILL.md`.
 
 ## Development
 
