@@ -88,6 +88,21 @@ oo spec refresh          # refetch after an OpenObserve upgrade
 Without a reachable spec the CLI falls back to v1, except for `alerts`, `folders` and
 `reports`, the three resources that have a v2 in OpenObserve 0.91.
 
+## Skill for agents
+
+`skills/openobserve` is a skill for coding agents: how the commands map onto the API, what
+the bodies look like, and a reference for every endpoint, written from an instance's own
+OpenAPI document. Drop it next to your other skills:
+
+```bash
+mkdir -p ~/.claude/skills
+curl -sL https://github.com/paveldedik/oo-cli/archive/main.tar.gz \
+  | tar -xz --strip-components=2 -C ~/.claude/skills oo-cli-main/skills/openobserve
+```
+
+Or point any agent that reads Markdown at `skills/openobserve/SKILL.md`; the files under
+`references/` are plain documentation and stand on their own.
+
 ## Development
 
 ```bash
