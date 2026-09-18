@@ -33,6 +33,7 @@ examples:
   oo delete dashboards/0194f0e1 --folder default
   oo search --sql "select * from default limit 10" --from -30m
   oo api GET /api/{org}/prometheus/api/v1/query --query "up"
+  oo skill install                        -> ~/.agents/skills/openobserve
 
 environment:
   OO_ENDPOINT    base URL, default http://localhost:5080

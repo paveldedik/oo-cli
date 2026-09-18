@@ -95,11 +95,12 @@ bodies look like, and a reference for every endpoint, written from an instance's
 OpenAPI document. It installs itself.
 
 ```bash
-oo skill install            # -> ~/.claude/skills/openobserve
+oo skill install            # -> ~/.agents/skills/openobserve
 oo skill update             # after upgrading the CLI
 ```
 
-`--dir` puts it somewhere else (`oo skill install --dir .claude/skills` for one project),
+`--dir` puts it wherever your agent looks (`oo skill install --dir ~/.claude/skills`, or
+`--dir .claude/skills` for a single project),
 `--force` overwrites an existing copy, and `oo skill path` prints the bundled original.
 Without installing anything: `uvx openobserve-cli skill install`.
 

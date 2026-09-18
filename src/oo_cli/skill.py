@@ -13,8 +13,8 @@ from oo_cli.client import OOError
 
 NAME = "openobserve"
 
-#: Where Claude Code, and anything that follows its layout, looks for skills.
-DEFAULT_DIR = Path.home() / ".claude" / "skills"
+#: The agent-agnostic skills directory; `--dir` points at any other one.
+DEFAULT_DIR = Path.home() / ".agents" / "skills"
 
 
 def source() -> Path:
