@@ -37,51 +37,42 @@ then `uv run oo --help`.
 
 ## Configuration
 
-Everything comes from the environment:
+Everything comes from the environment. Nothing is required: with no variables set the
+CLI talks to `http://localhost:5080` as an anonymous user, which is what a port-forward
+to a local OpenObserve looks like.
 
-| Variable                  | Default                 | Meaning                                     |
-|---------------------------|-------------------------|---------------------------------------------|
-| `OO_ENDPOINT`             | `http://localhost:5080` | base URL                                    |
-| `OO_ORG`                  | `default`               | organization                                |
-| `OO_TOKEN`                | —                       | base64 of `email:token`, sent as basic auth |
-| `OO_USER` / `OO_PASSWORD` | —                       | the same credential spelled out             |
-| `OO_TIMEOUT`              | `60`                    | request timeout in seconds                  |
-| `OO_LOGIN_PATH`           | `/cli-login`            | where the login helper is mounted           |
-| `OO_HOME`                 | `~/.oo`                 | where the session file lives                |
+| Variable                  | Required                        | Default                 | Meaning                                       |
+|---------------------------|---------------------------------|-------------------------|-----------------------------------------------|
+| `OO_ENDPOINT`             | optional                        | `http://localhost:5080` | base URL                                      |
+| `OO_ORG`                  | optional                        | `default`               | organization                                  |
+| `OO_TOKEN`                | to reach anything but `/healthz`| —                       | base64 of `email:token`, sent as basic auth   |
+| `OO_USER` / `OO_PASSWORD` | instead of `OO_TOKEN`           | —                       | the same credential spelled out               |
+| `OO_COOKIE`               | when a gateway guards the host  | —                       | `Cookie` header, sent verbatim                |
+| `OO_TIMEOUT`              | optional                        | `60`                    | request timeout in seconds                    |
 
 `--endpoint`, `--org` and `--timeout` override the corresponding variable.
 
 ## When something authenticates in front of OpenObserve
 
-Plenty of deployments put OpenObserve behind a gateway that authenticates users itself: an
-AWS ALB with an `authenticate-oidc` action, oauth2-proxy, an identity-aware proxy. Such a
-gateway takes nothing but its own session cookie, which it issues to a browser at the end
-of an interactive login — no API token gets past it, and a CLI cannot run that flow on its
-own, because the flow's nonce belongs to whoever started it and the cookie ends up in the
-browser.
+Plenty of deployments put OpenObserve behind a gateway that authenticates users itself:
+an AWS ALB with an `authenticate-oidc` action, oauth2-proxy, an identity-aware proxy.
+Such a gateway takes nothing but its own session cookie, which it issues to a browser
+at the end of an interactive login — no API token gets past it, and a CLI cannot run
+that flow on its own.
 
-What a browser will do is send the cookie to anything behind the gateway. So deploy
-[`deploy/login-helper.yaml`](deploy/login-helper.yaml) there, route one path to it, and:
+So hand it the cookie your browser already has. In devtools, Network tab, take the
+`Cookie` header off any request to that host (or Application, Cookies) and:
 
 ```bash
-oo auth login     # opens a tab in the browser you already have signed in
-oo auth status
-oo auth logout
+export OO_COOKIE="AWSELBAuthSessionCookie-0=...; AWSELBAuthSessionCookie-1=..."
 ```
 
-The helper reads the cookie off its own request and redirects the browser to a loopback
-port the CLI is listening on; the cookie is stored in `~/.oo/session.json` (0600) and
-replayed on every request to that endpoint. The redirect target is always `127.0.0.1` and
-only its port comes from the request, so the cookie cannot go anywhere but back to the
-machine the browser runs on. Cookies whose name the helper does not recognize stay behind —
-set `COOKIE_PATTERN` on the helper to match your gateway's.
+It is sent verbatim, so any gateway's cookie works, whatever it calls it. A request
+that hits the gateway without one says so instead of failing on a page of HTML. The
+cookie expires on the gateway's schedule — an ALB session lasts 7 days by default.
 
-If the helper is not deployed, `oo auth login --cookie "<Cookie header>"` takes the same
-cookie pasted out of the browser's devtools, and a request that hits the gateway without a
-session says so instead of failing on a page of HTML.
-
-The gateway is orthogonal to OpenObserve's own authentication: the cookie gets you through
-the door, `OO_TOKEN` still identifies you to OpenObserve.
+The gateway is orthogonal to OpenObserve's own authentication: the cookie gets you
+through the door, `OO_TOKEN` still identifies you to OpenObserve.
 
 ## v1 and v2
 

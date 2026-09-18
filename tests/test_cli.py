@@ -42,11 +42,17 @@ def test_half_a_credential_is_an_error() -> None:
 
 def test_defaults_do_not_need_the_environment() -> None:
     config = Config.from_env({})
-    assert (config.endpoint, config.org, config.authorization) == (
+    assert (config.endpoint, config.org, config.authorization, config.cookie) == (
         "http://localhost:5080",
         "default",
         None,
+        None,
     )
+
+
+def test_a_gateway_cookie_is_taken_as_it_was_pasted() -> None:
+    pasted = "AWSELBAuthSessionCookie-0=one; AWSELBAuthSessionCookie-1=two"
+    assert Config.from_env({"OO_COOKIE": pasted}).cookie == pasted
 
 
 @pytest.mark.parametrize(

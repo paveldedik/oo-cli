@@ -10,8 +10,6 @@ from dataclasses import dataclass
 DEFAULT_ENDPOINT = "http://localhost:5080"
 DEFAULT_ORG = "default"
 DEFAULT_TIMEOUT = 60.0
-#: Where the login helper is mounted behind the gateway, see `oo auth login`.
-DEFAULT_LOGIN_PATH = "/cli-login"
 
 
 class ConfigError(Exception):
@@ -23,8 +21,8 @@ class Config:
     endpoint: str
     org: str
     authorization: str | None
+    cookie: str | None
     timeout: float
-    login_path: str
 
     @classmethod
     def from_env(
@@ -39,8 +37,8 @@ class Config:
             endpoint=(endpoint or values.get("OO_ENDPOINT") or DEFAULT_ENDPOINT).rstrip("/"),
             org=org or values.get("OO_ORG") or DEFAULT_ORG,
             authorization=_authorization(values),
+            cookie=values.get("OO_COOKIE") or None,
             timeout=timeout or float(values.get("OO_TIMEOUT") or DEFAULT_TIMEOUT),
-            login_path=values.get("OO_LOGIN_PATH") or DEFAULT_LOGIN_PATH,
         )
 
 

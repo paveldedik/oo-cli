@@ -10,7 +10,7 @@ def _response(location: str) -> httpx.Response:
 
 
 def test_a_redirect_to_another_host_is_read_as_an_authenticating_gateway() -> None:
-    with pytest.raises(OOError, match="oo auth login"):
+    with pytest.raises(OOError, match="OO_COOKIE"):
         _reject_gateway(_response("https://login.microsoftonline.com/tenant/oauth2/v2.0/authorize"))
 
 

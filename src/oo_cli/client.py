@@ -6,7 +6,6 @@ from typing import Any
 
 import httpx
 
-from oo_cli import session
 from oo_cli.config import Config
 
 
@@ -26,9 +25,8 @@ class Client:
         headers = {"Accept": "application/json"}
         if config.authorization:
             headers["Authorization"] = config.authorization
-        cookies = session.load(config.endpoint)
-        if cookies:
-            headers["Cookie"] = session.header(cookies)
+        if config.cookie:
+            headers["Cookie"] = config.cookie
         self._http = httpx.Client(
             base_url=config.endpoint,
             headers=headers,
@@ -79,8 +77,9 @@ _UNREACHABLE_HINT = "Set OO_ENDPOINT to a reachable OpenObserve, or start your p
 
 _GATEWAY_HINT = (
     "Something in front of OpenObserve is authenticating users itself and only takes its\n"
-    "own session cookie — no API token gets past it. Pick the cookie up from the browser:\n"
-    "  oo auth login"
+    "own session cookie, which no API token replaces. Copy the Cookie header out of the\n"
+    "browser that is signed in (devtools, Network tab) and pass it along:\n"
+    '  export OO_COOKIE="AWSELBAuthSessionCookie-0=...; AWSELBAuthSessionCookie-1=..."'
 )
 
 
