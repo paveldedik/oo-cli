@@ -12,6 +12,7 @@ repos:
       - id: trailing-whitespace
       - id: end-of-file-fixer
       - id: check-yaml
+        args: ["--allow-multiple-documents"]  # the deploy manifest is a bundle
       - id: check-toml
       - id: detect-private-key
 
@@ -19,7 +20,7 @@ repos:
     rev: v0.14.3
     hooks:
       - id: ruff-format
-      - id: ruff
+      - id: ruff-check
         args: ["--fix", "--exit-non-zero-on-fix", "--config", "pyproject.toml"]
 
   - repo: https://github.com/pre-commit/mirrors-mypy
