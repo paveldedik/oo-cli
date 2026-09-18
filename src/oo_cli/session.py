@@ -11,6 +11,8 @@ import json
 import os
 import time
 from pathlib import Path
+from typing import Any
+
 
 def path() -> Path:
     return Path(os.environ.get("OO_HOME") or Path.home() / ".oo") / "session.json"
@@ -20,7 +22,7 @@ def load(endpoint: str) -> dict[str, str]:
     entry = _read().get(endpoint)
     if not entry:
         return {}
-    return entry.get("cookies", {})
+    return dict(entry.get("cookies", {}))
 
 
 def age(endpoint: str) -> float | None:
@@ -31,7 +33,7 @@ def age(endpoint: str) -> float | None:
 
 def save(endpoint: str, cookies: dict[str, str]) -> None:
     sessions = _read()
-    sessions[endpoint] = {"cookies": cookies, "saved_at": time.time()}
+    sessions[endpoint] = {"cookies": dict(cookies), "saved_at": time.time()}
     _write(sessions)
 
 
@@ -48,14 +50,15 @@ def header(cookies: dict[str, str]) -> str:
     return "; ".join(f"{name}={value}" for name, value in sorted(cookies.items()))
 
 
-def _read() -> dict[str, dict]:
+def _read() -> dict[str, dict[str, Any]]:
     try:
-        return json.loads(path().read_text())
+        stored = json.loads(path().read_text())
     except (OSError, ValueError):
         return {}
+    return stored if isinstance(stored, dict) else {}
 
 
-def _write(sessions: dict[str, dict]) -> None:
+def _write(sessions: dict[str, dict[str, Any]]) -> None:
     file = path()
     file.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
     file.touch(mode=0o600, exist_ok=True)

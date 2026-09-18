@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import re
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 _OFFSET = re.compile(r"^([+-])(\d+)([smhdw])$")
 _UNITS = {"s": "seconds", "m": "minutes", "h": "hours", "d": "days", "w": "weeks"}
@@ -18,7 +18,7 @@ def to_micros(value: str, now: datetime | None = None) -> int:
 
     A timestamp without a zone is read as local time.
     """
-    now = now or datetime.now(timezone.utc)
+    now = now or datetime.now(UTC)
     value = value.strip()
 
     if value == "now":

@@ -10,10 +10,12 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from typing import TextIO
 
 import httpx
 
-from oo_cli import __version__, auth, session, spec as spec_module
+from oo_cli import __version__, auth, session
+from oo_cli import spec as spec_module
 from oo_cli.client import Client, HTTPError, OOError
 from oo_cli.config import Config, ConfigError
 from oo_cli.timeutil import TimeError, to_micros
@@ -131,7 +133,9 @@ def _parser() -> argparse.ArgumentParser:
             help=f"{verb.upper()} a resource, e.g. oo {verb} dashboards",
             allow_abbrev=False,
         )
-        p.add_argument("resource", help='resource path under the org, e.g. "alerts" or "alerts/<id>"')
+        p.add_argument(
+            "resource", help='resource path under the org, e.g. "alerts" or "alerts/<id>"'
+        )
         _add_body_arguments(p)
 
     p = sub.add_parser("api", help="call any path verbatim", allow_abbrev=False)
@@ -148,7 +152,9 @@ def _parser() -> argparse.ArgumentParser:
     p.add_argument("--type", default="logs", help="stream type: logs, metrics or traces")
 
     p = sub.add_parser(
-        "auth", help="sign in to an authenticating gateway in front of the endpoint", allow_abbrev=False
+        "auth",
+        help="sign in to an authenticating gateway in front of the endpoint",
+        allow_abbrev=False,
     )
     p.add_argument("action", choices=("login", "status", "logout"))
     p.add_argument(
@@ -157,14 +163,16 @@ def _parser() -> argparse.ArgumentParser:
     )
 
     p = sub.add_parser("spec", help="inspect the instance's OpenAPI document", allow_abbrev=False)
-    p.add_argument("action", choices=("paths", "refresh"), help="list endpoints or refetch the spec")
+    p.add_argument(
+        "action", choices=("paths", "refresh"), help="list endpoints or refetch the spec"
+    )
     p.add_argument("needle", nargs="?", help="substring filter for paths")
 
     return parser
 
 
 def _add_body_arguments(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument("-d", "--data", help='request body, @file or @- for stdin')
+    parser.add_argument("-d", "--data", help="request body, @file or @- for stdin")
     parser.add_argument("-f", "--file", help="request body read from a file")
 
 
@@ -218,7 +226,8 @@ def _run_auth(client: Client, args: argparse.Namespace, extras: list[str]) -> in
     endpoint = client.config.endpoint
 
     if args.action == "logout":
-        print(f"Signed out of {endpoint}" if session.clear(endpoint) else f"No session for {endpoint}")
+        gone = session.clear(endpoint)
+        print(f"Signed out of {endpoint}" if gone else f"No session for {endpoint}")
         return 0
 
     if args.action == "status":
@@ -296,7 +305,8 @@ def _params(extras: list[str]) -> list[tuple[str, str]]:
 
 
 def _body(args: argparse.Namespace) -> bytes | None:
-    data, file = getattr(args, "data", None), getattr(args, "file", None)
+    data: str | None = getattr(args, "data", None)
+    file: str | None = getattr(args, "file", None)
     if data and file:
         raise UsageError("use either -d or -f, not both")
     if file:
@@ -315,7 +325,7 @@ def _body(args: argparse.Namespace) -> bytes | None:
         raise UsageError(f"cannot read {source}: {exc}") from exc
 
 
-def _emit(response: httpx.Response, raw: bool, stream=sys.stdout) -> None:
+def _emit(response: httpx.Response, raw: bool, stream: TextIO = sys.stdout) -> None:
     text = response.text
     if not text.strip():
         return

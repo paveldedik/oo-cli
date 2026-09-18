@@ -52,10 +52,17 @@ class Client:
         headers = {"Content-Type": "application/json"} if body is not None else None
         try:
             response = self._http.request(
-                method.upper(), path, params=params, content=body, headers=headers
+                method.upper(),
+                path,
+                # A tuple, because httpx types its list of pairs invariantly.
+                params=tuple(params) if params is not None else None,
+                content=body,
+                headers=headers,
             )
         except httpx.ConnectError as exc:
-            raise OOError(f"{self.config.endpoint} is unreachable: {exc}\n{_UNREACHABLE_HINT}") from exc
+            raise OOError(
+                f"{self.config.endpoint} is unreachable: {exc}\n{_UNREACHABLE_HINT}"
+            ) from exc
         except httpx.HTTPError as exc:
             raise OOError(f"request to {self.config.endpoint}{path} failed: {exc}") from exc
 

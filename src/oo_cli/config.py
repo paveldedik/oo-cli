@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import base64
 import os
+from collections.abc import Mapping
 from dataclasses import dataclass
 
 DEFAULT_ENDPOINT = "http://localhost:5080"
@@ -28,22 +29,22 @@ class Config:
     @classmethod
     def from_env(
         cls,
-        env: dict[str, str] | None = None,
+        env: Mapping[str, str] | None = None,
         endpoint: str | None = None,
         org: str | None = None,
         timeout: float | None = None,
     ) -> Config:
-        env = os.environ if env is None else env
+        values: Mapping[str, str] = os.environ if env is None else env
         return cls(
-            endpoint=(endpoint or env.get("OO_ENDPOINT") or DEFAULT_ENDPOINT).rstrip("/"),
-            org=org or env.get("OO_ORG") or DEFAULT_ORG,
-            authorization=_authorization(env),
-            timeout=timeout or float(env.get("OO_TIMEOUT") or DEFAULT_TIMEOUT),
-            login_path=env.get("OO_LOGIN_PATH") or DEFAULT_LOGIN_PATH,
+            endpoint=(endpoint or values.get("OO_ENDPOINT") or DEFAULT_ENDPOINT).rstrip("/"),
+            org=org or values.get("OO_ORG") or DEFAULT_ORG,
+            authorization=_authorization(values),
+            timeout=timeout or float(values.get("OO_TIMEOUT") or DEFAULT_TIMEOUT),
+            login_path=values.get("OO_LOGIN_PATH") or DEFAULT_LOGIN_PATH,
         )
 
 
-def _authorization(env: dict[str, str]) -> str | None:
+def _authorization(env: Mapping[str, str]) -> str | None:
     """Build the Authorization header value.
 
     OO_TOKEN is the credential OpenObserve hands out for a service account (base64

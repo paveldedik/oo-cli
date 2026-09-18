@@ -1,0 +1,37 @@
+name: Publish
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "[0-9]+.[0-9]+.[0-9]+"
+
+jobs:
+  publish:
+    name: Release to GitHub and PyPI
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.13"
+
+      - name: Build Package
+        run: uv build
+
+      - name: Publish Release Notes
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            ./dist/*.whl
+            ./dist/*.tar.gz
+          generate_release_notes: true
+
+      - name: Publish Distribution Package to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          password: ${{ secrets.PYPI_API_TOKEN }}

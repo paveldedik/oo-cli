@@ -69,7 +69,7 @@ class Spec:
                 continue
             if all(
                 t.startswith("{") and t.endswith("}") or t == p
-                for t, p in zip(template_parts, parts)
+                for t, p in zip(template_parts, parts, strict=True)
             ):
                 return template
         return None
@@ -105,7 +105,7 @@ def load(client: Client, refresh: bool = False) -> Spec:
 
 def _cache_file(endpoint: str) -> Path:
     base = os.environ.get("XDG_CACHE_HOME") or Path.home() / ".cache"
-    digest = hashlib.sha1(endpoint.encode()).hexdigest()[:12]
+    digest = hashlib.sha1(endpoint.encode(), usedforsecurity=False).hexdigest()[:12]
     return Path(base) / "oo-cli" / f"spec-{digest}.json"
 
 
@@ -116,7 +116,8 @@ def _read_cache(path: Path, ignore_age: bool = False) -> dict[str, list[str]] | 
         return None
     if not ignore_age and time.time() - payload.get("fetched_at", 0) > MAX_AGE_SECONDS:
         return None
-    return payload.get("templates")
+    templates = payload.get("templates")
+    return templates if isinstance(templates, dict) else None
 
 
 def _write_cache(path: Path, endpoint: str, templates: dict[str, list[str]]) -> None:

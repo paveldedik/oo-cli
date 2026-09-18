@@ -1,3 +1,5 @@
+from datetime import UTC
+
 import pytest
 
 from oo_cli.cli import UsageError, _params
@@ -5,40 +7,40 @@ from oo_cli.config import Config, ConfigError
 from oo_cli.timeutil import TimeError, to_micros
 
 
-def test_query_parameters_accept_both_spellings():
+def test_query_parameters_accept_both_spellings() -> None:
     assert _params(["--folder=default", "--size", "10"]) == [("folder", "default"), ("size", "10")]
 
 
-def test_a_flag_without_a_value_is_true():
+def test_a_flag_without_a_value_is_true() -> None:
     assert _params(["--enabled"]) == [("enabled", "true")]
 
 
-def test_a_stray_positional_is_an_error():
+def test_a_stray_positional_is_an_error() -> None:
     with pytest.raises(UsageError):
         _params(["folder"])
 
 
-def test_token_is_sent_as_basic_auth():
+def test_token_is_sent_as_basic_auth() -> None:
     config = Config.from_env({"OO_TOKEN": "dXNlcjp0b2tlbg=="})
     assert config.authorization == "Basic dXNlcjp0b2tlbg=="
 
 
-def test_a_token_naming_its_own_scheme_is_left_alone():
+def test_a_token_naming_its_own_scheme_is_left_alone() -> None:
     assert Config.from_env({"OO_TOKEN": "Bearer abc"}).authorization == "Bearer abc"
 
 
-def test_user_and_password_are_encoded():
+def test_user_and_password_are_encoded() -> None:
     assert Config.from_env({"OO_USER": "user", "OO_PASSWORD": "token"}).authorization == (
         "Basic dXNlcjp0b2tlbg=="
     )
 
 
-def test_half_a_credential_is_an_error():
+def test_half_a_credential_is_an_error() -> None:
     with pytest.raises(ConfigError):
         Config.from_env({"OO_USER": "user"})
 
 
-def test_defaults_do_not_need_the_environment():
+def test_defaults_do_not_need_the_environment() -> None:
     config = Config.from_env({})
     assert (config.endpoint, config.org, config.authorization) == (
         "http://localhost:5080",
@@ -56,23 +58,23 @@ def test_defaults_do_not_need_the_environment():
         ("2026-09-18T12:00:00+00:00", 1789732800_000_000),
     ],
 )
-def test_timestamps_become_microseconds(value, micros):
+def test_timestamps_become_microseconds(value: str, micros: int) -> None:
     assert to_micros(value) == micros
 
 
-def test_offsets_are_relative_to_now():
-    from datetime import datetime, timezone
+def test_offsets_are_relative_to_now() -> None:
+    from datetime import datetime
 
-    now = datetime(2026, 9, 18, 12, 0, tzinfo=timezone.utc)
+    now = datetime(2026, 9, 18, 12, 0, tzinfo=UTC)
     assert to_micros("-15m", now=now) == to_micros("now", now=now) - 15 * 60 * 1_000_000
 
 
-def test_nonsense_time_is_an_error():
+def test_nonsense_time_is_an_error() -> None:
     with pytest.raises(TimeError):
         to_micros("yesterday")
 
 
-def test_a_negative_offset_is_not_read_as_an_option():
+def test_a_negative_offset_is_not_read_as_an_option() -> None:
     from oo_cli.cli import _glue_offsets
 
     assert _glue_offsets(["search", "--from", "-30m", "--to", "now"]) == [

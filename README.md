@@ -7,7 +7,7 @@ CLI does not know about is still reachable with `oo api`.
 ```bash
 oo get dashboards
 oo get alerts --folder default           # GET /api/v2/{org}/alerts?folder=default
-oo get streams/sp_metrics
+oo get streams/app_logs
 oo post alerts -f alert.json
 oo put dashboards/0194f0e1 -d @- < dashboard.json
 oo delete alerts/7
@@ -27,9 +27,13 @@ milliseconds or microseconds, or an ISO 8601 datetime (local time when it carrie
 ## Install
 
 ```bash
-uv tool install --from . oo-cli     # installs the `oo` binary
-uv run oo --help                    # or just run it from the checkout
+uv tool install openobserve-cli     # installs the `oo` command
+uvx openobserve-cli get streams     # or run it without installing anything
 ```
+
+The command is `oo`; `openobserve-cli` is the same command under the distribution's
+name, which is what makes the `uvx` one-liner work. From a checkout: `uv sync` and
+then `uv run oo --help`.
 
 ## Configuration
 
@@ -98,4 +102,5 @@ Without a reachable spec the CLI falls back to v1, except for `alerts`, `folders
 ```bash
 uv sync
 uv run pytest
+pre-commit install     # ruff, mypy and conventional commit messages
 ```
